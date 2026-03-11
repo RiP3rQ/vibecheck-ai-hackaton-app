@@ -39,6 +39,7 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 type View = "improver" | "responder";
 type ReplyMode = "custom" | "edgy";
+const DEFAULT_INSTRUCTIONS_ENDPOINT = "/api/default-system-instructions";
 
 function isView(value: string): value is View {
   return value === "improver" || value === "responder";
@@ -201,7 +202,7 @@ export default function Home() {
     [storageOwnerId],
   );
   const [instructionOverrides, setInstructionOverrides] = useState<Record<string, string>>({});
-  const [saveState, setSaveState] = useState<"idle" | "saving" | "saved">("idle");
+  const [saveState, setSaveState] = useState<"idle" | "saving" | "saved" | "error">("idle");
 
   const [draft, setDraft] = useState("");
   const [specificInstructions, setSpecificInstructions] = useState("");
@@ -263,6 +264,50 @@ export default function Home() {
     .join("") || "U";
 
   useEffect(() => {
+    if (!isLoaded || !isSignedIn) {
+      return;
+    }
+
+    let cancelled = false;
+
+    const loadFromDatabase = async (): Promise<void> => {
+      try {
+        const response = await fetch(DEFAULT_INSTRUCTIONS_ENDPOINT, {
+          method: "GET",
+          headers: { "Content-Type": "application/json" },
+        });
+
+        if (!response.ok) {
+          return;
+        }
+
+        const payload = (await response.json()) as {
+          data?: { defaultSystemInstructions?: string };
+        };
+        const dbInstructions = payload.data?.defaultSystemInstructions ?? "";
+
+        if (cancelled) {
+          return;
+        }
+
+        setInstructionOverrides((previous) => ({
+          ...previous,
+          [storageKey]: dbInstructions,
+        }));
+        window.localStorage.setItem(storageKey, dbInstructions);
+      } catch {
+        return;
+      }
+    };
+
+    void loadFromDatabase();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [isLoaded, isSignedIn, storageKey]);
+
+  useEffect(() => {
     if (!isLoaded) {
       return;
     }
@@ -270,12 +315,35 @@ export default function Home() {
     let clearStateTimer: number | null = null;
 
     const timeout = window.setTimeout(() => {
-      window.localStorage.setItem(storageKey, systemInstructions);
-      setSaveState("saved");
+      const persistInstructions = async (): Promise<void> => {
+        try {
+          window.localStorage.setItem(storageKey, systemInstructions);
 
-      clearStateTimer = window.setTimeout(() => {
-        setSaveState("idle");
-      }, 1200);
+          if (isSignedIn) {
+            const response = await fetch(DEFAULT_INSTRUCTIONS_ENDPOINT, {
+              method: "PUT",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ defaultSystemInstructions: systemInstructions }),
+            });
+
+            if (!response.ok) {
+              throw new Error("Failed to save default instructions.");
+            }
+          }
+
+          setSaveState("saved");
+          clearStateTimer = window.setTimeout(() => {
+            setSaveState("idle");
+          }, 1200);
+        } catch {
+          setSaveState("error");
+          clearStateTimer = window.setTimeout(() => {
+            setSaveState("idle");
+          }, 2000);
+        }
+      };
+
+      void persistInstructions();
     }, 2000);
 
     return () => {
@@ -284,7 +352,7 @@ export default function Home() {
         window.clearTimeout(clearStateTimer);
       }
     };
-  }, [isLoaded, storageKey, systemInstructions]);
+  }, [isLoaded, isSignedIn, storageKey, systemInstructions]);
 
   async function submitImprover(): Promise<void> {
     if (!draft.trim() || improverBusy) {
@@ -400,7 +468,13 @@ export default function Home() {
               <p className="text-xs text-muted-foreground">
                 Status{" "}
                 <Badge variant={saveState === "saved" ? "secondary" : "outline"}>
-                  {saveState === "saving" ? "Saving..." : saveState === "saved" ? "Saved" : "Idle"}
+                  {saveState === "saving"
+                    ? "Saving..."
+                    : saveState === "saved"
+                      ? "Saved"
+                      : saveState === "error"
+                        ? "Save failed"
+                        : "Idle"}
                 </Badge>
               </p>
             </CardContent>
