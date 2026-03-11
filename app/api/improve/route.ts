@@ -142,21 +142,26 @@ export async function POST(request: Request): Promise<Response> {
   const prompt = buildImproverPrompt(payload);
 
   try {
-    const streamResult = streamImprovedPost(payload, prompt, async (output) => {
-      try {
-        await saveImproveGeneration({
-          clerkUserId: userId,
-          draftPost: payload.draftPost,
-          specificInstructions: payload.specificInstructions,
-          additionalContext: payload.additionalContext,
-          defaultSystemInstructions: payload.defaultSystemInstructions,
-          mergedPrompt: prompt,
-          output,
-        });
-      } catch (error) {
-        console.error("Failed to persist improve generation", error);
-      }
-    });
+    const streamResult = streamImprovedPost(
+      payload,
+      prompt,
+      async (output) => {
+        try {
+          await saveImproveGeneration({
+            clerkUserId: userId,
+            draftPost: payload.draftPost,
+            specificInstructions: payload.specificInstructions,
+            additionalContext: payload.additionalContext,
+            defaultSystemInstructions: payload.defaultSystemInstructions,
+            mergedPrompt: prompt,
+            output,
+          });
+        } catch (error) {
+          console.error("Failed to persist improve generation", error);
+        }
+      },
+      request.signal,
+    );
 
     return streamResult.toTextStreamResponse({
       headers: {

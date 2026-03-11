@@ -1,8 +1,8 @@
 import type { UIMessage } from "ai";
-import { generateReply } from "../_lib/generation";
+import { streamResponderReply } from "../_lib/generation";
 import { requireUserId } from "../_lib/auth";
 import { saveResponderGeneration } from "../_lib/generation-store";
-import { createTextStreamResponse } from "../_lib/stream";
+import { getUserPreference } from "../_lib/preferences-store";
 import { parseResponderPayload } from "../_lib/validation";
 
 export const maxDuration = 30;
@@ -118,20 +118,59 @@ export async function POST(request: Request): Promise<Response> {
     payload = parsed.data;
   }
 
-  const output = generateReply(payload);
-
-  try {
-    await saveResponderGeneration({
-      clerkUserId: userId,
-      targetPost: payload.targetPost,
-      customAngleTone: payload.customAngleTone,
-      mode: payload.mode,
-      defaultSystemInstructions: payload.defaultSystemInstructions,
-      output,
-    });
-  } catch {
-    return Response.json({ error: "Failed to persist generated response." }, { status: 500 });
+  if (!process.env.GOOGLE_GENERATIVE_AI_API_KEY) {
+    return Response.json(
+      { error: "Server is missing GOOGLE_GENERATIVE_AI_API_KEY configuration." },
+      { status: 500 },
+    );
   }
 
-  return createTextStreamResponse(output);
+  let persistedPreferences;
+
+  try {
+    persistedPreferences = await getUserPreference(userId);
+  } catch {
+    return Response.json({ error: "Failed to load user preferences." }, { status: 500 });
+  }
+
+  const effectiveDefaultInstructions =
+    payload.defaultSystemInstructions || persistedPreferences?.defaultSystemInstructions || "";
+
+  const effectivePayload = {
+    ...payload,
+    defaultSystemInstructions: effectiveDefaultInstructions,
+  };
+
+  try {
+    const streamResult = streamResponderReply(
+      effectivePayload,
+      async (output) => {
+        try {
+          await saveResponderGeneration({
+            clerkUserId: userId,
+            targetPost: effectivePayload.targetPost,
+            customAngleTone: effectivePayload.customAngleTone,
+            mode: effectivePayload.mode,
+            defaultSystemInstructions: effectivePayload.defaultSystemInstructions,
+            output,
+          });
+        } catch (error) {
+          console.error("Failed to persist responder generation", error);
+        }
+      },
+      request.signal,
+    );
+
+    return streamResult.toTextStreamResponse({
+      headers: {
+        "Cache-Control": "no-cache, no-transform",
+        "X-Content-Type-Options": "nosniff",
+      },
+    });
+  } catch {
+    return Response.json(
+      { error: "Failed to stream generated response from the language model." },
+      { status: 500 },
+    );
+  }
 }
