@@ -24,7 +24,11 @@ export function buildImproverPrompt(payload: ImproverPayload): string {
   ].join("\n");
 }
 
-export function streamImprovedPost(payload: ImproverPayload, mergedPrompt: string) {
+export function streamImprovedPost(
+  payload: ImproverPayload,
+  mergedPrompt: string,
+  onFinish?: (output: string) => Promise<void> | void,
+) {
   return streamText({
     model: google(IMPROVER_MODEL),
     temperature: 0.7,
@@ -36,6 +40,13 @@ export function streamImprovedPost(payload: ImproverPayload, mergedPrompt: strin
       mergedPrompt,
       `Original Draft: ${payload.draftPost}`,
     ].join("\n\n"),
+    onFinish: async ({ text }) => {
+      if (!onFinish) {
+        return;
+      }
+
+      await onFinish(text);
+    },
   });
 }
 
