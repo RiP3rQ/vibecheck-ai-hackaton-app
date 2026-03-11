@@ -7,6 +7,8 @@ import {
   SignUpButton,
   UserButton,
 } from "@clerk/nextjs";
+import { Button } from "@/components/ui/button";
+import { Toaster } from "@/components/ui/sonner";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -38,10 +40,14 @@ export default function RootLayout({
           <header className="flex h-16 items-center justify-end gap-4 p-4">
             <Show when="signed-out">
               <SignInButton mode="redirect">
-                <button className="rounded-md border border-border px-3 py-1.5 text-sm">Sign in</button>
+                <Button size="sm" variant="outline">
+                  Sign in
+                </Button>
               </SignInButton>
               <SignUpButton mode="redirect">
-                <button className="rounded-md border border-border px-3 py-1.5 text-sm">Sign up</button>
+                <Button size="sm" variant="outline">
+                  Sign up
+                </Button>
               </SignUpButton>
             </Show>
             <Show when="signed-in">
@@ -49,6 +55,7 @@ export default function RootLayout({
             </Show>
           </header>
           {children}
+          <Toaster />
         </ClerkProvider>
       </body>
     </html>
