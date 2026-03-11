@@ -9,7 +9,13 @@ export async function GET(request: Request): Promise<Response> {
     return user.response;
   }
 
-  const existing = getUserPreference(user.userId);
+  let existing;
+
+  try {
+    existing = await getUserPreference(user.userId);
+  } catch {
+    return Response.json({ error: "Failed to load user preferences." }, { status: 500 });
+  }
 
   return Response.json({
     data: {
@@ -42,7 +48,13 @@ export async function PUT(request: Request): Promise<Response> {
     return Response.json({ error: parsed.error }, { status: 400 });
   }
 
-  const record = upsertUserPreference(user.userId, parsed.data.defaultSystemInstructions);
+  let record;
+
+  try {
+    record = await upsertUserPreference(user.userId, parsed.data.defaultSystemInstructions);
+  } catch {
+    return Response.json({ error: "Failed to save user preferences." }, { status: 500 });
+  }
 
   return Response.json({
     data: {
