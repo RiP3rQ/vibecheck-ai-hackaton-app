@@ -3,9 +3,32 @@
 import { useEffect, useState } from "react";
 import { Copy, LoaderCircle, Sparkles } from "lucide-react";
 
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import {
+  Card,
+  CardAction,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Textarea } from "@/components/ui/textarea";
 
 type View = "improver" | "responder";
+
+function isView(value: string): value is View {
+  return value === "improver" || value === "responder";
+}
 
 const DEMO_USER_ID = "demo-user";
 const EDGY_TEMPLATE =
@@ -103,20 +126,20 @@ function Field({
   required?: boolean;
 }) {
   return (
-    <label className="flex flex-col gap-2">
-      <span className="text-sm font-medium text-foreground/90">
+    <div className="flex flex-col gap-2">
+      <Label htmlFor={id} className="text-sm font-medium text-foreground/90">
         {label} {required ? <span className="text-rose-500">*</span> : null}
-      </span>
-      <textarea
+      </Label>
+      <Textarea
         id={id}
-        className="w-full rounded-xl border border-border bg-background px-3 py-2 text-sm outline-none transition focus:border-ring focus:ring-2 focus:ring-ring/30"
+        className="min-h-0 rounded-xl"
         rows={rows}
         value={value}
         onChange={(event) => {
           onChange(event.target.value);
         }}
       />
-    </label>
+    </div>
   );
 }
 
@@ -134,9 +157,10 @@ function OutputPanel({
   onCopy: () => void;
 }) {
   return (
-    <section className="rounded-2xl border border-border/70 bg-card/80 p-4 shadow-sm backdrop-blur">
-      <div className="mb-3 flex items-center justify-between">
-        <h3 className="text-sm font-semibold tracking-wide text-foreground/90">{title}</h3>
+    <Card className="rounded-2xl border-border/70 bg-card/80 shadow-sm backdrop-blur">
+      <CardHeader className="flex-row items-center justify-between">
+        <CardTitle className="text-sm font-semibold tracking-wide text-foreground/90">{title}</CardTitle>
+        <CardAction>
         <Button
           size="sm"
           variant="outline"
@@ -147,8 +171,10 @@ function OutputPanel({
           <Copy className="size-3.5" />
           {copied ? "Copied" : "Copy"}
         </Button>
-      </div>
+        </CardAction>
+      </CardHeader>
 
+      <CardContent>
       <div className="min-h-40 rounded-xl border border-border bg-background/70 p-3 text-sm leading-6 whitespace-pre-wrap text-foreground/90">
         {output || "Generated text will appear here in streaming mode."}
         {streaming ? (
@@ -158,7 +184,8 @@ function OutputPanel({
           </span>
         ) : null}
       </div>
-    </section>
+      </CardContent>
+    </Card>
   );
 }
 
@@ -278,75 +305,95 @@ export default function Home() {
             <p className="text-xs font-semibold tracking-[0.2em] text-muted-foreground uppercase">
               Workspace
             </p>
-            <div className="rounded-xl border border-border bg-card/80 p-2">
-              <label className="text-xs text-muted-foreground" htmlFor="view-select">
-                View Selector
-              </label>
-              <select
-                id="view-select"
-                className="mt-1 w-full rounded-lg border border-border bg-background px-2 py-2 text-sm"
-                value={view}
-                onChange={(event) => {
-                  setView(event.target.value as View);
-                }}
-              >
-                <option value="improver">Post Improver</option>
-                <option value="responder">Edgy Responder</option>
-              </select>
-            </div>
+            <Card className="rounded-xl border border-border bg-card/80 py-3">
+              <CardContent className="space-y-1">
+                <Label className="text-xs text-muted-foreground" htmlFor="view-select">
+                  View Selector
+                </Label>
+                <Select
+                  value={view}
+                  onValueChange={(nextValue) => {
+                    if (isView(nextValue)) {
+                      setView(nextValue);
+                    }
+                  }}
+                >
+                  <SelectTrigger id="view-select" className="mt-1 w-full">
+                    <SelectValue placeholder="Pick view" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="improver">Post Improver</SelectItem>
+                    <SelectItem value="responder">Edgy Responder</SelectItem>
+                  </SelectContent>
+                </Select>
+              </CardContent>
+            </Card>
           </section>
 
-          <section className="flex-1 rounded-xl border border-border bg-card/70 p-3 shadow-sm">
-            <label className="mb-2 block text-sm font-semibold" htmlFor="system-instructions">
-              Default System Instructions
-            </label>
-            <textarea
-              id="system-instructions"
-              className="h-48 w-full rounded-xl border border-border bg-background px-3 py-2 text-sm outline-none transition focus:border-ring focus:ring-2 focus:ring-ring/30"
-              placeholder="Set default behavior, tone, constraints, and style."
-              value={systemInstructions}
-              onChange={(event) => {
-                setSaveState("saving");
-                setSystemInstructions(event.target.value);
-              }}
-            />
+          <Card className="flex-1 rounded-xl border border-border bg-card/70 shadow-sm">
+            <CardHeader>
+              <CardTitle className="text-sm">Default System Instructions</CardTitle>
+              <CardDescription>
+                Set default behavior, tone, constraints, and style.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Textarea
+                id="system-instructions"
+                className="h-48 rounded-xl"
+                placeholder="Set default behavior, tone, constraints, and style."
+                value={systemInstructions}
+                onChange={(event) => {
+                  setSaveState("saving");
+                  setSystemInstructions(event.target.value);
+                }}
+              />
             <p className="mt-2 text-xs text-muted-foreground">
-              Autosave status: {saveState === "saving" ? "Saving..." : saveState === "saved" ? "Saved" : "Idle"}
+              Autosave status{" "}
+              <Badge variant={saveState === "saved" ? "secondary" : "outline"} className="ml-1 align-middle">
+                {saveState === "saving" ? "Saving..." : saveState === "saved" ? "Saved" : "Idle"}
+              </Badge>
             </p>
             <p className="mt-1 text-xs text-muted-foreground">
               Current storage key is scoped by user identity placeholder ({DEMO_USER_ID}).
             </p>
-          </section>
+            </CardContent>
+          </Card>
 
-          <section className="mt-auto rounded-xl border border-border bg-card/80 p-3">
-            <p className="text-xs font-medium text-muted-foreground">Authenticated User</p>
-            <div className="mt-2 flex items-center gap-2">
-              <div className="grid size-8 place-content-center rounded-full bg-primary/10 text-xs font-bold text-primary">
-                DU
+          <Card className="mt-auto rounded-xl border border-border bg-card/80 py-3">
+            <CardContent>
+              <p className="text-xs font-medium text-muted-foreground">Authenticated User</p>
+              <div className="mt-2 flex items-center gap-2">
+                <Avatar>
+                  <AvatarFallback className="bg-primary/10 text-xs font-bold text-primary">DU</AvatarFallback>
+                </Avatar>
+                <div>
+                  <p className="text-sm font-semibold">Demo User</p>
+                  <p className="text-xs text-muted-foreground">Replace with Clerk &lt;UserButton /&gt;</p>
+                </div>
               </div>
-              <div>
-                <p className="text-sm font-semibold">Demo User</p>
-                <p className="text-xs text-muted-foreground">Replace with Clerk &lt;UserButton /&gt;</p>
-              </div>
-            </div>
-          </section>
+            </CardContent>
+          </Card>
         </div>
       </aside>
 
       <main className="mx-auto w-full max-w-5xl p-4 md:ml-80 md:p-8">
-        <header className="mb-6 rounded-2xl border border-border/70 bg-card/80 p-5 shadow-sm backdrop-blur">
-          <p className="text-xs font-semibold tracking-[0.2em] text-muted-foreground uppercase">Tweet Copilot MVP</p>
-          <h1 className="mt-2 text-2xl font-semibold tracking-tight">
-            {view === "improver" ? "Post Improver" : "Post Responder"}
-          </h1>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Frontend scaffold prepared from the PRD, including sidebar autosave and streaming-ready output panes.
-          </p>
-        </header>
+        <Card className="mb-6 rounded-2xl border border-border/70 bg-card/80 shadow-sm backdrop-blur">
+          <CardHeader>
+            <CardDescription className="text-xs font-semibold tracking-[0.2em] uppercase">Tweet Copilot MVP</CardDescription>
+            <CardTitle className="mt-1 text-2xl tracking-tight">
+              {view === "improver" ? "Post Improver" : "Post Responder"}
+            </CardTitle>
+            <CardDescription>
+              Frontend scaffold prepared from the PRD, including sidebar autosave and streaming-ready output panes.
+            </CardDescription>
+          </CardHeader>
+        </Card>
 
         {view === "improver" ? (
           <section className="grid gap-4 md:grid-cols-2">
-            <div className="space-y-4 rounded-2xl border border-border/70 bg-card/80 p-4 shadow-sm backdrop-blur">
+            <Card className="rounded-2xl border border-border/70 bg-card/80 shadow-sm backdrop-blur">
+              <CardContent className="space-y-4">
               <Field
                 id="draft-post"
                 label="Draft Post"
@@ -380,7 +427,8 @@ export default function Home() {
                   </>
                 )}
               </Button>
-            </div>
+              </CardContent>
+            </Card>
 
             <OutputPanel
               title="Revised Post"
@@ -392,7 +440,8 @@ export default function Home() {
           </section>
         ) : (
           <section className="grid gap-4 md:grid-cols-2">
-            <div className="space-y-4 rounded-2xl border border-border/70 bg-card/80 p-4 shadow-sm backdrop-blur">
+            <Card className="rounded-2xl border border-border/70 bg-card/80 shadow-sm backdrop-blur">
+              <CardContent className="space-y-4">
               <Field
                 id="target-post"
                 label="Target Tweet"
@@ -430,7 +479,8 @@ export default function Home() {
                   Edgy Response
                 </Button>
               </div>
-            </div>
+              </CardContent>
+            </Card>
 
             <OutputPanel
               title="Generated Reply"

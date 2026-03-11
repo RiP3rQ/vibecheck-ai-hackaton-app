@@ -3,7 +3,7 @@ import { getUserPreference, upsertUserPreference } from "../_lib/preferences-sto
 import { parsePreferencesPayload } from "../_lib/validation";
 
 export async function GET(request: Request): Promise<Response> {
-  const user = requireUserId(request);
+  const user = await requireUserId(request);
 
   if (!user.ok) {
     return user.response;
@@ -22,7 +22,7 @@ export async function GET(request: Request): Promise<Response> {
 }
 
 export async function PUT(request: Request): Promise<Response> {
-  const user = requireUserId(request);
+  const user = await requireUserId(request);
 
   if (!user.ok) {
     return user.response;

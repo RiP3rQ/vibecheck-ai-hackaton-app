@@ -1,6 +1,13 @@
+import { auth } from "@clerk/nextjs/server";
+
 const USER_ID_HEADERS = ["x-clerk-user-id", "x-user-id"] as const;
 
-export function getUserId(request: Request): string | null {
+async function getUserIdFromClerk(): Promise<string | null> {
+  const { userId } = await auth();
+  return userId ?? null;
+}
+
+function getUserIdFromHeaders(request: Request): string | null {
   for (const header of USER_ID_HEADERS) {
     const value = request.headers.get(header)?.trim();
 
@@ -12,18 +19,28 @@ export function getUserId(request: Request): string | null {
   return null;
 }
 
-export function requireUserId(request: Request):
+export async function getUserId(request: Request): Promise<string | null> {
+  const clerkUserId = await getUserIdFromClerk();
+
+  if (clerkUserId) {
+    return clerkUserId;
+  }
+
+  return getUserIdFromHeaders(request);
+}
+
+export async function requireUserId(request: Request): Promise<
   | { ok: true; userId: string }
-  | { ok: false; response: Response } {
-  const userId = getUserId(request);
+  | { ok: false; response: Response }
+> {
+  const userId = await getUserId(request);
 
   if (!userId) {
     return {
       ok: false,
       response: Response.json(
         {
-          error:
-            "Unauthorized. Provide user identity (placeholder until Clerk middleware is integrated).",
+          error: "Unauthorized. Sign in with Clerk to access this resource.",
         },
         { status: 401 },
       ),

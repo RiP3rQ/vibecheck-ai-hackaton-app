@@ -1,4 +1,8 @@
+import { openai } from "@ai-sdk/openai";
+import { streamText } from "ai";
 import type { ImproverPayload, ResponderPayload } from "./validation";
+
+const DEFAULT_OPENAI_MODEL = "gpt-4o-mini";
 
 function normalizeWhitespace(value: string): string {
   return value.replace(/\s+/g, " ").trim();
@@ -32,6 +36,31 @@ export function buildImproverPrompt(payload: ImproverPayload): string {
       : "Specific Instructions: (none provided)",
     `Draft Post Content: ${payload.draftPost}`,
   ].join("\n");
+}
+
+function getImproverModelId(): string {
+  const configuredModel = process.env.OPENAI_MODEL?.trim();
+
+  if (configuredModel) {
+    return configuredModel;
+  }
+
+  return DEFAULT_OPENAI_MODEL;
+}
+
+export function streamImprovedPost(payload: ImproverPayload, mergedPrompt: string) {
+  return streamText({
+    model: openai(getImproverModelId()),
+    temperature: 0.7,
+    maxOutputTokens: 320,
+    prompt: [
+      "You improve tweet drafts for clarity, punch, and readability while preserving user intent.",
+      "Return only the improved tweet text with no preamble, labels, or markdown.",
+      "Keep the result concise and suitable for posting.",
+      mergedPrompt,
+      `Original Draft: ${payload.draftPost}`,
+    ].join("\n\n"),
+  });
 }
 
 export function buildResponderPrompt(payload: ResponderPayload): string {
