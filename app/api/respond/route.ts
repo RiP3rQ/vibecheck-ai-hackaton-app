@@ -106,17 +106,14 @@ export async function POST(request: Request): Promise<Response> {
   }
 
   const chatPayload = parseResponderChatPayload(body);
-  let payload = chatPayload;
 
-  if (!payload) {
-    const parsed = parseResponderPayload(body);
+  const parsed = parseResponderPayload(chatPayload ?? body);
 
-    if (!parsed.ok) {
-      return Response.json({ error: parsed.error }, { status: 400 });
-    }
-
-    payload = parsed.data;
+  if (!parsed.ok) {
+    return Response.json({ error: parsed.error }, { status: 400 });
   }
+
+  const payload = parsed.data;
 
   if (!process.env.GOOGLE_GENERATIVE_AI_API_KEY) {
     return Response.json(
