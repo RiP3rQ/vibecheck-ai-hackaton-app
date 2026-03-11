@@ -1,4 +1,4 @@
-import { buildResponderPrompt, generateReply } from "../_lib/generation";
+import { generateReply } from "../_lib/generation";
 import { createTextStreamResponse } from "../_lib/stream";
 import { parseResponderPayload } from "../_lib/validation";
 
@@ -19,8 +19,7 @@ export async function POST(request: Request): Promise<Response> {
     return Response.json({ error: parsed.error }, { status: 400 });
   }
 
-  const prompt = buildResponderPrompt(parsed.data);
-  const output = generateReply(parsed.data, prompt);
+  const output = generateReply(parsed.data);
 
   return createTextStreamResponse(output);
 }

@@ -19,7 +19,7 @@ function getUserIdFromHeaders(request: Request): string | null {
   return null;
 }
 
-export async function getUserId(request: Request): Promise<string | null> {
+async function getUserId(request: Request): Promise<string | null> {
   const clerkUserId = await getUserIdFromClerk();
 
   if (clerkUserId) {
