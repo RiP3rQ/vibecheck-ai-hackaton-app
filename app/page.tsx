@@ -2,6 +2,7 @@
 
 import { TextStreamChatTransport, UIMessage } from "ai";
 import { useChat } from "@ai-sdk/react";
+import { Show, SignInButton, SignUpButton, UserButton, useUser } from "@clerk/nextjs";
 import { Copy, LoaderCircle, Sparkles } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 
@@ -42,8 +43,6 @@ type ReplyMode = "custom" | "edgy";
 function isView(value: string): value is View {
   return value === "improver" || value === "responder";
 }
-
-const DEMO_USER_ID = "demo-user";
 
 function getMessageText(message: UIMessage): string {
   let text = "";
@@ -194,15 +193,14 @@ function StreamPanel({
 }
 
 export default function Home() {
+  const { isLoaded, isSignedIn, user } = useUser();
   const [view, setView] = useState<View>("improver");
-  const storageKey = `user-preferences:${DEMO_USER_ID}:default-system-instructions`;
-  const [systemInstructions, setSystemInstructions] = useState(() => {
-    if (typeof window === "undefined") {
-      return "";
-    }
-
-    return window.localStorage.getItem(storageKey) ?? "";
-  });
+  const storageOwnerId = isSignedIn && user?.id ? user.id : "anonymous";
+  const storageKey = useMemo(
+    () => `user-preferences:${storageOwnerId}:default-system-instructions`,
+    [storageOwnerId],
+  );
+  const [instructionOverrides, setInstructionOverrides] = useState<Record<string, string>>({});
   const [saveState, setSaveState] = useState<"idle" | "saving" | "saved">("idle");
 
   const [draft, setDraft] = useState("");
@@ -245,8 +243,30 @@ export default function Home() {
 
   const improverBusy = improverStatus === "submitted" || improverStatus === "streaming";
   const responderBusy = responderStatus === "submitted" || responderStatus === "streaming";
+  const storedInstructions = useMemo(() => {
+    if (typeof window === "undefined") {
+      return "";
+    }
+
+    return window.localStorage.getItem(storageKey) ?? "";
+  }, [storageKey]);
+  const systemInstructions = instructionOverrides[storageKey] ?? storedInstructions;
+
+  const userDisplayName =
+    user?.fullName ?? user?.username ?? user?.primaryEmailAddress?.emailAddress ?? "Signed in user";
+  const userEmail = user?.primaryEmailAddress?.emailAddress;
+  const userInitials = userDisplayName
+    .split(" ")
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((chunk) => chunk[0]?.toUpperCase() ?? "")
+    .join("") || "U";
 
   useEffect(() => {
+    if (!isLoaded) {
+      return;
+    }
+
     let clearStateTimer: number | null = null;
 
     const timeout = window.setTimeout(() => {
@@ -264,7 +284,7 @@ export default function Home() {
         window.clearTimeout(clearStateTimer);
       }
     };
-  }, [storageKey, systemInstructions]);
+  }, [isLoaded, storageKey, systemInstructions]);
 
   async function submitImprover(): Promise<void> {
     if (!draft.trim() || improverBusy) {
@@ -365,12 +385,15 @@ export default function Home() {
                     value={systemInstructions}
                     onChange={(event) => {
                       setSaveState("saving");
-                      setSystemInstructions(event.target.value);
+                      setInstructionOverrides((previous) => ({
+                        ...previous,
+                        [storageKey]: event.target.value,
+                      }));
                     }}
                   />
                 </FieldContent>
                 <FieldDescription>
-                  Autosaved to local storage for {DEMO_USER_ID}.
+                  Autosaved to local storage for {storageOwnerId}.
                 </FieldDescription>
               </Field>
 
@@ -386,15 +409,45 @@ export default function Home() {
           <Card className="mt-auto">
             <CardContent>
               <p className="text-xs font-medium text-muted-foreground">Authenticated User</p>
-              <div className="mt-2 flex items-center gap-2">
-                <Avatar>
-                  <AvatarFallback className="bg-primary/10 text-xs font-bold text-primary">DU</AvatarFallback>
-                </Avatar>
-                <div>
-                  <p className="text-sm font-semibold">Demo User</p>
-                  <p className="text-xs text-muted-foreground">Replace with Clerk &lt;UserButton /&gt;</p>
-                </div>
-              </div>
+              {!isLoaded ? (
+                <p className="mt-2 text-xs text-muted-foreground">Loading user details...</p>
+              ) : (
+                <>
+                  <Show when="signed-in">
+                    <div className="mt-2 flex items-center justify-between gap-3">
+                      <div className="flex items-center gap-2">
+                        <Avatar>
+                          <AvatarFallback className="bg-primary/10 text-xs font-bold text-primary">
+                            {userInitials}
+                          </AvatarFallback>
+                        </Avatar>
+                        <div>
+                          <p className="text-sm font-semibold">{userDisplayName}</p>
+                          {userEmail ? (
+                            <p className="text-xs text-muted-foreground">{userEmail}</p>
+                          ) : null}
+                        </div>
+                      </div>
+                      <UserButton />
+                    </div>
+                  </Show>
+
+                  <Show when="signed-out">
+                    <div className="mt-2 flex gap-2">
+                      <SignInButton mode="redirect">
+                        <Button size="sm" variant="outline">
+                          Sign in
+                        </Button>
+                      </SignInButton>
+                      <SignUpButton mode="redirect">
+                        <Button size="sm" variant="outline">
+                          Sign up
+                        </Button>
+                      </SignUpButton>
+                    </div>
+                  </Show>
+                </>
+              )}
             </CardContent>
           </Card>
         </div>

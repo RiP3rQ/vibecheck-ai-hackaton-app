@@ -5,7 +5,6 @@ import {
   Show,
   SignInButton,
   SignUpButton,
-  UserButton,
 } from "@clerk/nextjs";
 import { Button } from "@/components/ui/button";
 import { Toaster } from "@/components/ui/sonner";
@@ -49,9 +48,6 @@ export default function RootLayout({
                   Sign up
                 </Button>
               </SignUpButton>
-            </Show>
-            <Show when="signed-in">
-              <UserButton />
             </Show>
           </header>
           {children}
