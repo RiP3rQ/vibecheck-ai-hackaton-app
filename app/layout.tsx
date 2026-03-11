@@ -34,7 +34,7 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
-        <ClerkProvider>
+        <ClerkProvider signInUrl="/sign-in" signUpUrl="/sign-up">
           <header className="flex h-16 items-center justify-end gap-4 p-4">
             <Show when="signed-out">
               <SignInButton mode="redirect">
