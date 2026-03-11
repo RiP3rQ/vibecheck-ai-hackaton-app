@@ -46,11 +46,16 @@ export function streamImprovedPost(
     ].join("\n\n"),
     onFinish: async ({ text }) => {
       if (!onFinish) {
+				console.log("[INFO] Improved post still streaming", text);
         return;
       }
 
+			console.log("[INFO] Improved post finished streaming", text);
       await onFinish(text);
     },
+		onError: (error) => {
+			console.error("[ERROR]Error streaming improved post", error);
+		},
   });
 }
 
