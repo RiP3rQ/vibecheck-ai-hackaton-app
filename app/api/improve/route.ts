@@ -26,9 +26,9 @@ export async function POST(request: Request): Promise<Response> {
     return Response.json({ error: parsed.error }, { status: 400 });
   }
 
-  if (!process.env.OPENAI_API_KEY) {
+  if (!process.env.GOOGLE_GENERATIVE_AI_API_KEY) {
     return Response.json(
-      { error: "Server is missing OPENAI_API_KEY configuration." },
+      { error: "Server is missing GOOGLE_GENERATIVE_AI_API_KEY configuration." },
       { status: 500 },
     );
   }

@@ -1,8 +1,8 @@
-import { openai } from "@ai-sdk/openai";
+import { google } from "@ai-sdk/google";
 import { streamText } from "ai";
 import type { ImproverPayload, ResponderPayload } from "./validation";
 
-const DEFAULT_OPENAI_MODEL = "gpt-4o-mini";
+const IMPROVER_MODEL = "gemini-2.5-flash";
 
 function normalizeWhitespace(value: string): string {
   return value.replace(/\s+/g, " ").trim();
@@ -38,19 +38,9 @@ export function buildImproverPrompt(payload: ImproverPayload): string {
   ].join("\n");
 }
 
-function getImproverModelId(): string {
-  const configuredModel = process.env.OPENAI_MODEL?.trim();
-
-  if (configuredModel) {
-    return configuredModel;
-  }
-
-  return DEFAULT_OPENAI_MODEL;
-}
-
 export function streamImprovedPost(payload: ImproverPayload, mergedPrompt: string) {
   return streamText({
-    model: openai(getImproverModelId()),
+    model: google(IMPROVER_MODEL),
     temperature: 0.7,
     maxOutputTokens: 320,
     prompt: [

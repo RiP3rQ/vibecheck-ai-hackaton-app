@@ -37,8 +37,12 @@ export default function RootLayout({
         <ClerkProvider>
           <header className="flex h-16 items-center justify-end gap-4 p-4">
             <Show when="signed-out">
-              <SignInButton />
-              <SignUpButton />
+              <SignInButton mode="redirect">
+                <button className="rounded-md border border-border px-3 py-1.5 text-sm">Sign in</button>
+              </SignInButton>
+              <SignUpButton mode="redirect">
+                <button className="rounded-md border border-border px-3 py-1.5 text-sm">Sign up</button>
+              </SignUpButton>
             </Show>
             <Show when="signed-in">
               <UserButton />
